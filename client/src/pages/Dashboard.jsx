@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
@@ -7,7 +6,6 @@ import Reports from "../components/Reports";
 function Dashboard() {
   const { user, token, logout } = useAuth();
 
-  // Get today's date for the date input
   const today = new Date();
 
   const currentDate = [
@@ -16,19 +14,15 @@ function Dashboard() {
     String(today.getDate()).padStart(2, "0"),
   ].join("-");
 
-  // Form values
   const [date, setDate] = useState(currentDate);
   const [timeSlot, setTimeSlot] = useState("Morning");
   const [value, setValue] = useState("");
 
-  // Success and error messages
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
-  // Store readings received from the backend
   const [readings, setReadings] = useState([]);
 
-  // Get all readings for the logged-in user
+  // Fetch logged-in user's readings
   const fetchReadings = async () => {
     try {
       const response = await api.get("/readings", {
@@ -43,19 +37,34 @@ function Dashboard() {
     }
   };
 
-  // Load readings when the user logs in
   useEffect(() => {
     if (token) {
       fetchReadings();
     }
   }, [token]);
 
-  // Add a new reading
+  // Add reading
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setMessage("");
     setError("");
+
+    if (value.trim() === "") {
+      setError("Please enter a glucose value.");
+      return;
+    }
+
+    const glucoseValue = Number(value);
+
+    if (
+      !Number.isInteger(glucoseValue) ||
+      glucoseValue < 40 ||
+      glucoseValue > 600
+    ) {
+      setError("Value must be between 40 and 600 mg/dl.");
+      return;
+    }
 
     try {
       await api.post(
@@ -63,7 +72,7 @@ function Dashboard() {
         {
           date,
           timeSlot,
-          value: Number(value),
+          value: glucoseValue,
         },
         {
           headers: {
@@ -75,7 +84,6 @@ function Dashboard() {
       setMessage("Reading added successfully!");
       setValue("");
 
-      // Refresh the list after adding a reading
       await fetchReadings();
     } catch (err) {
       setError(
@@ -84,7 +92,7 @@ function Dashboard() {
     }
   };
 
-  // Edit an existing reading
+  // Edit reading
   const handleEdit = async (reading) => {
     const newValue = window.prompt(
       "Enter new glucose value:",
@@ -95,9 +103,14 @@ function Dashboard() {
       return;
     }
 
+    if (newValue.trim() === "") {
+      setError("Please enter a glucose value.");
+      setMessage("");
+      return;
+    }
+
     const glucoseValue = Number(newValue);
 
-    // Check that the value is a valid whole number
     if (
       !Number.isInteger(glucoseValue) ||
       glucoseValue < 40 ||
@@ -126,7 +139,6 @@ function Dashboard() {
       setMessage("Reading updated successfully!");
       setError("");
 
-      // Show the updated data
       await fetchReadings();
     } catch (err) {
       setError(
@@ -136,7 +148,7 @@ function Dashboard() {
     }
   };
 
-  // Delete a reading
+  // Delete reading
   const handleDelete = async (id) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this reading?"
@@ -156,7 +168,6 @@ function Dashboard() {
       setMessage("Reading deleted successfully!");
       setError("");
 
-      // Refresh the list after deleting
       await fetchReadings();
     } catch (err) {
       setError(
@@ -168,8 +179,6 @@ function Dashboard() {
 
   return (
     <div className="dashboard-page">
-
-      {/* Dashboard Header */}
       <header className="dashboard-header">
         <div>
           <h1>Sweety</h1>
@@ -182,8 +191,6 @@ function Dashboard() {
       </header>
 
       <main className="dashboard-content">
-
-        {/* Add Reading Section */}
         <section className="dashboard-card">
           <h2>Add Blood Glucose Reading</h2>
 
@@ -216,13 +223,9 @@ function Dashboard() {
               <label>Glucose Value (mg/dl)</label>
               <input
                 type="number"
-                min="40"
-                max="600"
-                step="1"
                 placeholder="Enter glucose value"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                required
               />
             </div>
 
@@ -240,7 +243,6 @@ function Dashboard() {
           </form>
         </section>
 
-        {/* Readings Table */}
         <section className="dashboard-card">
           <h2>My Glucose Readings</h2>
 
@@ -289,11 +291,9 @@ function Dashboard() {
           )}
         </section>
 
-        {/* Reports Section */}
         <section className="dashboard-card">
           <Reports token={token} />
         </section>
-
       </main>
     </div>
   );
